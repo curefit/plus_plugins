@@ -42,9 +42,9 @@ class PackageInfoPlugin : MethodCallHandler, FlutterPlugin {
 
                 val infoMap = HashMap<String, String>()
                 infoMap.apply {
-                    put("appName", info.applicationInfo.loadLabel(packageManager).toString())
+                    put("appName", info.applicationInfo?.loadLabel(packageManager)?.toString() ?: "")
                     put("packageName", applicationContext!!.packageName)
-                    put("version", info.versionName)
+                    put("version", info.versionName ?: "")
                     put("buildNumber", getLongVersionCode(info).toString())
                     if (buildSignature != null) put("buildSignature", buildSignature)
                     if (installerPackage != null) put("installerStore", installerPackage)
@@ -93,23 +93,22 @@ class PackageInfoPlugin : MethodCallHandler, FlutterPlugin {
                 )
                 val signingInfo = packageInfo.signingInfo ?: return null
 
-                if (signingInfo.hasMultipleSigners()) {
-                    signatureToSha1(signingInfo.apkContentsSigners.first().toByteArray())
+                val signers = if (signingInfo.hasMultipleSigners()) {
+                    signingInfo.apkContentsSigners
                 } else {
-                    signatureToSha1(signingInfo.signingCertificateHistory.first().toByteArray())
+                    signingInfo.signingCertificateHistory
                 }
+                val signer = signers.firstOrNull() ?: return null
+                signatureToSha1(signer.toByteArray())
             } else {
                 val packageInfo = pm.getPackageInfo(
                     applicationContext!!.packageName,
                     PackageManager.GET_SIGNATURES
                 )
-                val signatures = packageInfo.signatures
 
-                if (signatures.isNullOrEmpty() || packageInfo.signatures.first() == null) {
-                    null
-                } else {
-                    signatureToSha1(signatures.first().toByteArray())
-                }
+                val signatures = packageInfo.signatures ?: return null
+                val first = signatures.firstOrNull() ?: return null
+                signatureToSha1(first.toByteArray())
             }
         } catch (e: PackageManager.NameNotFoundException) {
             null
